@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alemão Divertido - Animais</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* Cinza muito claro, quase branco */
+            color: #334155;
+            user-select: none; /* Evita seleção de texto acidental */
+        }
+
+        /* Estilos da Roleta */
+        .wheel-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            border: 8px solid #cbd5e1;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            margin: 0 auto;
+        }
+        
+        .wheel {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99); /* Giro suave */
+            position: relative;
+        }
+
+        .wheel-segment {
+            position: absolute;
+            width: 50%;
+            height: 50%;
+            transform-origin: 100% 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+        }
+
+        .wheel-pointer {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0; 
+            height: 0; 
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-top: 30px solid #ef4444; /* Seta vermelha apontando pra baixo */
+            z-index: 10;
+        }
+
+        /* Efeitos visuais suaves */
+        .tab-btn.active {
+            background-color: #3b82f6;
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.5);
+        }
+        
+        .word-card {
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .word-card:active {
+            transform: scale(0.95);
+        }
+        .word-card.selected {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
+            background-color: #eff6ff;
+        }
+
+        .drop-zone.highlight {
+            background-color: #e0f2fe;
+            border-color: #0ea5e9;
+        }
+
+        /* Ocultar scrollbar mantendo a funcionalidade */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Mensagem Flutuante (Substitui o alert) -->
+    <div id="message-box" class="fixed top-5 left-1/2 transform -translate-x-1/2 px-6 py-4 rounded-2xl text-xl font-bold text-white shadow-xl transition-opacity duration-300 opacity-0 pointer-events-none z-50">
+        Mensagem
+    </div>
+
+    <!-- Cabeçalho e Abas -->
+    <header class="p-4 bg-white shadow-sm sticky top-0 z-40">
+        <h1 class="text-3xl font-bold text-center text-blue-600 mb-4">Alemão Divertido 🐻</h1>
+        <div class="flex flex-wrap justify-center gap-2 max-w-3xl mx-auto">
+            <button onclick="showTab('tab-associacao')" id="btn-tab-associacao" class="tab-btn active px-6 py-3 rounded-xl font-semibold text-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
+                🧩 Ligar Palavras
+            </button>
+            <button onclick="showTab('tab-escrita')" id="btn-tab-escrita" class="tab-btn px-6 py-3 rounded-xl font-semibold text-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
+                ✍️ Escrever
+            </button>
+            <button onclick="showTab('tab-roleta')" id="btn-tab-roleta" class="tab-btn px-6 py-3 rounded-xl font-semibold text-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
+                🎡 Roleta
+            </button>
+        </div>
+    </header>
+
+    <!-- Conteúdo Principal -->
+    <main class="flex-grow p-4 md:p-8 max-w-5xl mx-auto w-full">
+
+        <!-- ABA 1: ASSOCIAÇÃO (Arrastar e Soltar) -->
+        <section id="tab-associacao" class="tab-content block">
+            <div class="text-center mb-8">
+                <h2 class="text-2xl font-bold text-gray-700">Ligue o animal ao seu nome!</h2>
+                <p class="text-gray-500 text-lg mt-2">Toque na palavra e depois na caixa vazia (ou arraste).</p>
+            </div>
+
+            <div class="flex flex-col md:flex-row gap-8">
+                <!-- Banco de Palavras -->
+                <div class="w-full md:w-1/3 bg-white p-6 rounded-3xl shadow-sm border-2 border-gray-100">
+                    <h3 class="text-xl font-semibold text-center mb-4 text-gray-400">Palavras</h3>
+                    <div id="word-bank" class="flex flex-wrap md:flex-col gap-4 justify-center">
+                        <!-- Palavras geradas via JS -->
+                    </div>
+                </div>
+
+                <!-- Animais e Caixas -->
+                <div class="w-full md:w-2/3 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6" id="drop-zones-container">
+                    <!-- Caixas geradas via JS -->
+                </div>
+            </div>
+            
+            <div class="mt-8 text-center">
+                <button onclick="resetAssociacao()" class="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold rounded-xl text-lg transition-colors">
+                    🔄 Recomeçar
+                </button>
+            </div>
+        </section>
+
+
+        <!-- ABA 2: ESCRITA COM MODELO -->
+        <section id="tab-escrita" class="tab-content hidden">
+            <div class="text-center mb-8">
+                <h2 class="text-2xl font-bold text-gray-700">Copie o nome dos animais</h2>
+            </div>
+            
+            <div class="max-w-2xl mx-auto bg-white p-4 md:p-8 rounded-3xl shadow-sm border-2 border-gray-100" id="writing-container">
+                <!-- Linhas de escrita geradas via JS -->
+            </div>
+        </section>
+
+
+        <!-- ABA 3: ROLETA -->
+        <section id="tab-roleta" class="tab-content hidden">
+            <div class="text-center mb-8">
+                <h2 class="text-2xl font-bold text-gray-700">Roleta dos Animais</h2>
+                <p class="text-gray-500 text-lg mt-2">Gire a roleta e escreva o nome do animal sorteado!</p>
+            </div>
+
+            <div class="flex flex-col items-center">
+                <!-- Roleta Visual -->
+                <div class="relative mb-8">
+                    <div class="wheel-pointer"></div>
+                    <div class="wheel-container">
+                        <div id="wheel" class="wheel">
+                            <!-- Fatias geradas via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <button id="spin-btn" onclick="spinWheel()" class="px-8 py-4 bg-green-500 hover:bg-green-600 text-white font-bold rounded-2xl text-2xl shadow-lg transition-transform transform hover:scale-105 active:scale-95 mb-8">
+                    🎡 Girar Roleta
+                </button>
+
+                <!-- Área de Resposta da Roleta -->
+                <div id="roulette-answer-area" class="w-full max-w-md bg-white p-6 rounded-3xl shadow-sm border-2 border-gray-100 text-center hidden">
+                    <div id="roulette-emoji" class="text-8xl mb-4">🐵</div>
+                    <p id="roulette-hint" class="text-gray-400 text-lg font-medium mb-4 hidden">Modelo: <span id="roulette-model-word" class="text-blue-500 font-bold">Affe</span></p>
+                    
+                    <input type="text" id="roulette-input" class="w-full text-center text-3xl p-4 border-4 border-gray-200 rounded-2xl focus:outline-none focus:border-blue-400 uppercase font-bold" placeholder="Escreva aqui..." autocomplete="off">
+                    
+                    <button onclick="checkRouletteAnswer()" class="mt-4 w-full px-6 py-4 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl text-xl transition-colors">
+                        Verificar Resposta
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // --- DADOS DOS ANIMAIS ---
+        const animals = [
+            { id: 'affe', word: 'Affe', emoji: '🐒', color: '#fef08a' }, // Amarelo
+            { id: 'baer', word: 'Bär', emoji: '🐻', color: '#fed7aa' }, // Laranja
+            { id: 'zebra', word: 'Zebra', emoji: '🦓', color: '#e5e7eb' }, // Cinza
+            { id: 'flamingo', word: 'Flamingo', emoji: '🦩', color: '#fbcfe8' }, // Rosa
+            { id: 'papagei', word: 'Papagei', emoji: '🦜', color: '#bbf7d0' }, // Verde
+            { id: 'kaenguru', word: 'Känguru', emoji: '🦘', color: '#fcd34d' }, // Amarelo escuro
+            { id: 'robbe', word: 'Robbe', emoji: '🦭', color: '#bfdbfe' }, // Azul
+            { id: 'schildkroete', word: 'Schildkröte', emoji: '🐢', color: '#d9f99d' } // Verde claro
+        ];
+
+        // --- SISTEMA DE MENSAGENS (Substitui alert) ---
+        function showMessage(msg, type = 'success') {
+            const box = document.getElementById('message-box');
+            box.textContent = msg;
+            
+            if (type === 'success') {
+                box.className = "fixed top-5 left-1/2 transform -translate-x-1/2 px-6 py-4 rounded-2xl text-2xl font-bold text-white shadow-xl transition-opacity duration-300 z-50 bg-green-500 border-4 border-green-600";
+            } else if (type === 'error') {
+                box.className = "fixed top-5 left-1/2 transform -translate-x-1/2 px-6 py-4 rounded-2xl text-2xl font-bold text-white shadow-xl transition-opacity duration-300 z-50 bg-red-500 border-4 border-red-600";
+            } else {
+                box.className = "fixed top-5 left-1/2 transform -translate-x-1/2 px-6 py-4 rounded-2xl text-2xl font-bold text-white shadow-xl transition-opacity duration-300 z-50 bg-blue-500 border-4 border-blue-600";
+            }
+
+            box.style.opacity = '1';
+            
+            setTimeout(() => {
+                box.style.opacity = '0';
+            }, 2500); // Some após 2.5 segundos
+        }
+
+        // --- NAVEGAÇÃO DAS ABAS ---
+        function showTab(tabId) {
+            // Esconde todas
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active', 'bg-blue-500', 'text-white'));
+            
+            // Mostra a selecionada
+            document.getElementById(tabId).classList.remove('hidden');
+            
+            // Atualiza botões
+            const btn = document.getElementById('btn-' + tabId);
+            btn.classList.add('active');
+        }
+
+        // ==========================================
+        // ABA 1: ASSOCIAÇÃO (Arrastar / Clicar)
+        // ==========================================
+        let selectedWordId = null;
+        let selectedWordElement = null;
+
+        function initAssociacao() {
+            const wordBank = document.getElementById('word-bank');
+            const dropZones = document.getElementById('drop-zones-container');
+            
+            wordBank.innerHTML = '';
+            dropZones.innerHTML = '';
+
+            // Embaralhar palavras para o banco
+            const shuffledAnimals = [...animals].sort(() => Math.random() - 0.5);
+
+            shuffledAnimals.forEach(animal => {
+                // Criar palavra arrastável/clicável
+                const wordEl = document.createElement('div');
+                wordEl.textContent = animal.word;
+                wordEl.id = `word-${animal.id}`;
+                wordEl.dataset.animal = animal.id;
+                wordEl.className = "word-card bg-white border-4 border-gray-200 rounded-2xl px-6 py-4 text-2xl font-bold text-center text-gray-700 shadow-sm";
+                wordEl.draggable = true;
+                
+                // Eventos de clique (acessibilidade para mobile/tablet)
+                wordEl.addEventListener('click', () => selectWord(wordEl, animal.id));
+                
+                // Eventos de Drag HTML5
+                wordEl.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('text/plain', animal.id);
+                    wordEl.classList.add('opacity-50');
+                });
+                wordEl.addEventListener('dragend', () => {
+                    wordEl.classList.remove('opacity-50');
+                });
+
+                wordBank.appendChild(wordEl);
+            });
+
+            // Criar Zonas de destino (mantendo ordem original ou embaralhada)
+            const dropAnimals = [...animals].sort(() => Math.random() - 0.5);
+            
+            dropAnimals.forEach(animal => {
+                const zoneContainer = document.createElement('div');
+                zoneContainer.className = "flex flex-col items-center bg-white p-4 rounded-3xl shadow-sm border-2 border-gray-100";
+                
+                const emojiDiv = document.createElement('div');
+                emojiDiv.className = "text-7xl mb-4";
+                emojiDiv.textContent = animal.emoji;
+                
+                const dropBox = document.createElement('div');
+                dropBox.className = "drop-zone w-full h-16 border-4 border-dashed border-gray-300 rounded-2xl flex items-center justify-center bg-gray-50 transition-colors";
+                dropBox.dataset.target = animal.id;
+                
+                // Eventos para clique
+                dropBox.addEventListener('click', () => attemptDropClick(dropBox));
+
+                // Eventos de Drop HTML5
+                dropBox.addEventListener('dragover', (e) => {
+                    e.preventDefault(); // Necessário para permitir o drop
+                    dropBox.classList.add('highlight');
+                });
+                dropBox.addEventListener('dragleave', () => {
+                    dropBox.classList.remove('highlight');
+                });
+                dropBox.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    dropBox.classList.remove('highlight');
+                    const draggedId = e.dataTransfer.getData('text/plain');
+                    attemptDropDrag(draggedId, dropBox);
+                });
+
+                zoneContainer.appendChild(emojiDiv);
+                zoneContainer.appendChild(dropBox);
+                dropZones.appendChild(zoneContainer);
+            });
+        }
+
+        // Lógica de Seleção por Clique
+        function selectWord(element, id) {
+            // Se já tem uma palavra na caixa certa, não faz nada
+            if(element.parentElement.classList.contains('drop-zone')) return;
+
+            // Desmarcar anterior
+            if(selectedWordElement) {
+                selectedWordElement.classList.remove('selected');
+            }
+            
+            // Se clicou na mesma, apenas desmarca
+            if(selectedWordId === id) {
+                selectedWordId = null;
+                selectedWordElement = null;
+                return;
+            }
+
+            // Marca a nova
+            selectedWordId = id;
+            selectedWordElement = element;
+            element.classList.add('selected');
+        }
+
+        function attemptDropClick(dropBox) {
+            if (!selectedWordId || !selectedWordElement) return;
+            
+            // Se a caixa já tem algo, ignora
+            if(dropBox.children.length > 0) return;
+
+            const targetId = dropBox.dataset.target;
+            
+            if (selectedWordId === targetId) {
+                // Acertou! Errorless: encaixa
+                successDrop(selectedWordElement, dropBox);
+                selectedWordId = null;
+                selectedWordElement = null;
+            } else {
+                // Errou! Errorless: Não deixa, avisa e mantém na caixa
+                showMessage('Tente novamente! 🐻', 'error');
+                selectedWordElement.classList.remove('selected');
+                selectedWordId = null;
+                selectedWordElement = null;
+            }
+        }
+
+        function attemptDropDrag(draggedId, dropBox) {
+            if(dropBox.children.length > 0) return;
+            const draggedElement = document.getElementById(`word-${draggedId}`);
+            if(!draggedElement) return;
+
+            const targetId = dropBox.dataset.target;
+
+            if (draggedId === targetId) {
+                successDrop(draggedElement, dropBox);
+            } else {
+                showMessage('Tente novamente! 🐻', 'error');
+            }
+        }
+
+        function successDrop(element, box) {
+            element.classList.remove('selected');
+            element.classList.remove('border-gray-200');
+            element.classList.add('border-green-400', 'bg-green-100', 'text-green-800', 'cursor-default');
+            element.draggable = false;
+            
+            // Remove eventos de clique da palavra
+            element.onclick = null;
+            
+            box.classList.remove('border-dashed', 'border-gray-300', 'bg-gray-50');
+            box.classList.add('border-solid', 'border-green-400', 'bg-green-50');
+            box.appendChild(element);
+            
+            showMessage('Richtig! (Correto!) 🎉', 'success');
+
+            // Verifica se terminou
+            checkAssociacaoWin();
+        }
+
+        function checkAssociacaoWin() {
+            const bank = document.getElementById('word-bank');
+            if(bank.children.length === 0) {
+                setTimeout(() => {
+                    showMessage('Fantástico! Você conseguiu todos! 🏆', 'success');
+                }, 1000);
+            }
+        }
+
+        function resetAssociacao() {
+            selectedWordId = null;
+            selectedWordElement = null;
+            initAssociacao();
+        }
+
+
+        // ==========================================
+        // ABA 2: ESCRITA
+        // ==========================================
+        function initEscrita() {
+            const container = document.getElementById('writing-container');
+            container.innerHTML = '';
+
+            animals.forEach(animal => {
+                const row = document.createElement('div');
+                row.className = "flex flex-col md:flex-row items-center justify-between p-4 border-b-2 border-gray-100 last:border-0 gap-4";
+                
+                const modelArea = document.createElement('div');
+                modelArea.className = "flex items-center gap-4 w-full md:w-1/2";
+                
+                const emoji = document.createElement('span');
+                emoji.className = "text-5xl";
+                emoji.textContent = animal.emoji;
+                
+                const modelWord = document.createElement('span');
+                modelWord.className = "text-3xl font-bold text-gray-400 tracking-wide";
+                modelWord.textContent = animal.word;
+
+                modelArea.appendChild(emoji);
+                modelArea.appendChild(modelWord);
+
+                const inputArea = document.createElement('div');
+                inputArea.className = "w-full md:w-1/2 relative";
+
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = "w-full text-3xl font-bold p-4 border-4 border-gray-200 rounded-2xl focus:outline-none focus:border-blue-400 uppercase";
+                input.placeholder = "Copie aqui...";
+                input.autocomplete = "off";
+                input.autocorrect = "off";
+                input.spellcheck = false;
+
+                const feedbackIcon = document.createElement('div');
+                feedbackIcon.className = "absolute right-4 top-1/2 transform -translate-y-1/2 text-3xl hidden";
+                feedbackIcon.textContent = '✅';
+
+                // Lógica de validação em tempo real
+                input.addEventListener('input', (e) => {
+                    const val = e.target.value.trim().toLowerCase();
+                    if (val === animal.word.toLowerCase()) {
+                        // Acertou
+                        input.classList.remove('border-gray-200', 'focus:border-blue-400');
+                        input.classList.add('border-green-500', 'bg-green-50', 'text-green-700');
+                        feedbackIcon.classList.remove('hidden');
+                        input.disabled = true; // Trava após acertar (errorless)
+                        showMessage('Sehr gut! (Muito bem!) 🌟', 'success');
+                    }
+                });
+
+                inputArea.appendChild(input);
+                inputArea.appendChild(feedbackIcon);
+
+                row.appendChild(modelArea);
+                row.appendChild(inputArea);
+                container.appendChild(row);
+            });
+        }
+
+
+        // ==========================================
+        // ABA 3: ROLETA
+        // ==========================================
+        let currentRotation = 0;
+        let isSpinning = false;
+        let currentRouletteAnimal = null;
+
+        function initRoleta() {
+            const wheel = document.getElementById('wheel');
+            wheel.innerHTML = '';
+            const sliceAngle = 360 / animals.length;
+
+            // Construir as fatias da roleta usando conic-gradient e posicionamento CSS
+            let gradientStr = [];
+            
+            animals.forEach((animal, index) => {
+                const startAngle = index * sliceAngle;
+                const endAngle = (index + 1) * sliceAngle;
+                gradientStr.push(`${animal.color} ${startAngle}deg ${endAngle}deg`);
+
+                // Posicionar o Emoji na fatia
+                const segment = document.createElement('div');
+                segment.className = 'wheel-segment';
+                
+                // A matemática para posicionar no meio da fatia
+                // rotate e translate para colocar o texto longe do centro
+                const rotate = startAngle + (sliceAngle / 2);
+                segment.style.transform = `rotate(${rotate}deg) translateY(-50%)`;
+                
+                // Rotacionar o emoji de volta para ficar em pé em relação ao centro (opcional, mas fica melhor)
+                const emojiSpan = document.createElement('span');
+                emojiSpan.textContent = animal.emoji;
+                emojiSpan.style.transform = 'rotate(90deg)'; // Ajuste visual
+                
+                segment.appendChild(emojiSpan);
+                wheel.appendChild(segment);
+            });
+
+            wheel.style.background = `conic-gradient(${gradientStr.join(', ')})`;
+        }
+
+        function spinWheel() {
+            if (isSpinning) return;
+            isSpinning = true;
+
+            // Esconder área de resposta
+            document.getElementById('roulette-answer-area').classList.add('hidden');
+            const input = document.getElementById('roulette-input');
+            input.value = '';
+            input.disabled = false;
+            input.classList.remove('border-green-500', 'bg-green-50', 'text-green-700');
+            input.classList.add('border-gray-200');
+            document.getElementById('roulette-hint').classList.add('hidden');
+
+            const wheel = document.getElementById('wheel');
+            
+            // Gira no mínimo 5 voltas (1800 graus) + um ângulo aleatório
+            const randomExtraDegrees = Math.floor(Math.random() * 360);
+            const totalSpin = 1800 + randomExtraDegrees;
+            currentRotation += totalSpin;
+
+            wheel.style.transform = `rotate(${currentRotation}deg)`;
+
+            // Quando a transição terminar
+            setTimeout(() => {
+                isSpinning = false;
+                calculateRouletteResult(currentRotation);
+            }, 4000); // 4 segundos é o tempo da transição no CSS
+        }
+
+        function calculateRouletteResult(rotation) {
+            // A roleta gira no sentido horário. 
+            // O ponteiro está no topo (0 graus fixo na tela).
+            // Precisamos calcular qual fatia parou embaixo do ponteiro.
+            
+            const normalizedRotation = rotation % 360;
+            // Como a roda girou para a direita (positiva), o que está no topo é 360 - rotação.
+            const pointerAngle = (360 - normalizedRotation) % 360; 
+            
+            const sliceAngle = 360 / animals.length;
+            const winningIndex = Math.floor(pointerAngle / sliceAngle);
+            
+            currentRouletteAnimal = animals[winningIndex];
+            
+            showRouletteAnswerArea();
+        }
+
+        function showRouletteAnswerArea() {
+            const area = document.getElementById('roulette-answer-area');
+            const emojiEl = document.getElementById('roulette-emoji');
+            
+            emojiEl.textContent = currentRouletteAnimal.emoji;
+            area.classList.remove('hidden');
+            
+            // Focar no input após abrir (bom para tablet)
+            setTimeout(() => {
+                document.getElementById('roulette-input').focus();
+            }, 100);
+        }
+
+        function checkRouletteAnswer() {
+            if(!currentRouletteAnimal) return;
+
+            const input = document.getElementById('roulette-input');
+            const val = input.value.trim().toLowerCase();
+            const hint = document.getElementById('roulette-hint');
+            const modelWord = document.getElementById('roulette-model-word');
+
+            if (val === currentRouletteAnimal.word.toLowerCase()) {
+                // Acertou
+                input.classList.remove('border-gray-200', 'border-red-400');
+                input.classList.add('border-green-500', 'bg-green-50', 'text-green-700');
+                input.disabled = true;
+                hint.classList.add('hidden');
+                showMessage('Richtig! Excelente! 🎈', 'success');
+            } else {
+                // Errou - Errorless: mostra a dica para copiar
+                input.value = '';
+                input.classList.add('border-red-400');
+                modelWord.textContent = currentRouletteAnimal.word;
+                hint.classList.remove('hidden');
+                showMessage('Tente copiar o modelo! 🐻', 'error');
+                input.focus();
+            }
+        }
+
+        // Permite validar com Enter
+        document.getElementById('roulette-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                checkRouletteAnswer();
+            }
+        });
+
+
+        // ==========================================
+        // INICIALIZAÇÃO GERAL
+        // ==========================================
+        window.onload = () => {
+            initAssociacao();
+            initEscrita();
+            initRoleta();
+        };
+
+    </script>
+</body>
+</html>
